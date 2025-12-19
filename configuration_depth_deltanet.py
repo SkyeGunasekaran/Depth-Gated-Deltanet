@@ -1,12 +1,6 @@
 """
 HelixNet Configuration
-
-A hybrid transformer architecture combining standard attention with a depth-recurrent
-state bank using the Gated Delta Rule. The state evolves across layers (depth) rather
-than across time steps, enabling deeper effective computation.
 """
-
-from typing import Optional, Union
 
 from transformers.configuration_utils import PretrainedConfig
 from transformers.utils import logging
@@ -16,11 +10,11 @@ logger = logging.get_logger(__name__)
 
 class HelixNetConfig(PretrainedConfig):
     r"""
-    This is the configuration class to store the configuration of a [`HelixNetModel`]. 
-    It is used to instantiate an HelixNet model according to the specified arguments, 
+    This is the configuration class to store the configuration of a [`HelixNetModel`].
+    It is used to instantiate an HelixNet model according to the specified arguments,
     defining the model architecture.
 
-    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. 
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs.
     Read the documentation from [`PretrainedConfig`] for more information.
 
     Args:
@@ -45,6 +39,8 @@ class HelixNetConfig(PretrainedConfig):
             The maximum sequence length that this model might ever be used with.
         rope_theta (`float`, *optional*, defaults to 10000.0):
             The base period of the RoPE embeddings.
+        sliding_window (`int`, *optional*, defaults to 4096):
+            The sliding window size for local attention.
         attention_dropout (`float`, *optional*, defaults to 0.0):
             The dropout ratio for the attention probabilities.
         state_bank_num_heads (`int`, *optional*, defaults to 8):
@@ -52,10 +48,8 @@ class HelixNetConfig(PretrainedConfig):
         state_bank_head_dim (`int`, *optional*, defaults to 64):
             Dimension of each head in the global whiteboard.
         state_bank_expand_v (`int`, *optional*, defaults to 2):
-            Expansion factor for the value dimension in the whiteboard. 
+            Expansion factor for the value dimension in the whiteboard.
             Effective value dim = `state_bank_head_dim * state_bank_expand_v`.
-        state_injection_scale (`float`, *optional*, defaults to 1.0):
-            Scaling factor for injecting the retrieved whiteboard state back into the residual stream.
         initializer_range (`float`, *optional*, defaults to 0.02):
             The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
         use_cache (`bool`, *optional*, defaults to `True`):
@@ -63,7 +57,7 @@ class HelixNetConfig(PretrainedConfig):
         tie_word_embeddings (`bool`, *optional*, defaults to `True`):
             Whether to tie the weights of the input embeddings and the output linear layer.
     """
-    
+
     model_type = "helixnet"
     keys_to_ignore_at_inference = ["past_key_values"]
 
@@ -79,6 +73,7 @@ class HelixNetConfig(PretrainedConfig):
         rms_norm_eps: float = 1e-5,
         max_position_embeddings: int = 2048,
         rope_theta: float = 10000.0,
+        sliding_window: int = 4096,  # <--- Added to match modeling_depth_helixnet.py
         attention_dropout: float = 0.0,
         # Whiteboard / State Bank specific configs
         state_bank_num_heads: int = 8,
@@ -103,16 +98,17 @@ class HelixNetConfig(PretrainedConfig):
         self.rms_norm_eps = rms_norm_eps
         self.max_position_embeddings = max_position_embeddings
         self.rope_theta = rope_theta
+        self.sliding_window = sliding_window
         self.attention_dropout = attention_dropout
-        
+
         # Whiteboard configuration
         self.state_bank_num_heads = state_bank_num_heads
         self.state_bank_head_dim = state_bank_head_dim
         self.state_bank_expand_v = state_bank_expand_v
-        
+
         self.initializer_range = initializer_range
         self.use_cache = use_cache
-        
+
         # Validation: Ensure hidden size is divisible by heads (optional but recommended)
         if hidden_size % num_attention_heads != 0:
             logger.warning(
